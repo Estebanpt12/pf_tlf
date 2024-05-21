@@ -82,54 +82,54 @@ class LexicalAnalyzer:
         except ValueError:
             return False
 
-    def add_token(self, name, value, tokens):
-        """Add a token to the list and print it."""
-        print(f"{value} = {name}")
-        tokens.append((name, value))
+    def add_token(self, name, value, tokens, line, column):
+        """Add a token to the list and print it with its position."""
+        print(f"{value} = {name} (line {line}, column {column})")
+        tokens.append((name, value, line, column))
 
-    def add_word(self, word, tokens):
+    def add_word(self, word, tokens, line, column):
         """Add a word as a token to the list of tokens."""
         if not word:
             return
 
         if word.startswith('#'):
-            self.add_token('COMMENT', word, tokens)
+            self.add_token('COMMENT', word, tokens, line, column)
             return
 
         identifier = self.is_identifier_by_prefix(word)
         if identifier:
-            self.add_token(identifier, word, tokens)
+            self.add_token(identifier, word, tokens, line, column)
             return
 
         if word in self.operators:
             operator_info = self.operators[word]
-            self.add_token(operator_info['name'], word, tokens)
+            self.add_token(operator_info['name'], word, tokens, line, column)
             return
 
         if word in self.reserved_words:
-            self.add_token('RESERVED WORD', word, tokens)
+            self.add_token('RESERVED WORD', word, tokens, line, column)
             return
 
         if self.is_number(word):
             if self.is_decimal(word):
-                self.add_token('REAL', word, tokens)
+                self.add_token('REAL', word, tokens, line, column)
             else:
-                self.add_token('INTEGER', word, tokens)
+                self.add_token('INTEGER', word, tokens, line, column)
             return
 
         if self.is_alphanumeric_identifier(word):
-            self.add_token('IDENTIFIER', word, tokens)
+            self.add_token('IDENTIFIER', word, tokens, line, column)
             return
 
         if word == '%':
             previous_token = tokens[-1] if tokens else None
             if previous_token and self.is_alphanumeric_identifier(previous_token[1]):
-                self.add_token('hash variable', word, tokens)
+                self.add_token('hash variable', word, tokens, line, column)
             else:
-                self.add_token('modulo', word, tokens)
+                self.add_token('modulo', word, tokens, line, column)
             return
 
-        self.add_token('UNRECOGNIZED', word, tokens)
+        self.add_token('UNRECOGNIZED', word, tokens, line, column)
 
     def analyze_lexically(self, code):
         """Perform lexical analysis on the given code."""
@@ -137,13 +137,21 @@ class LexicalAnalyzer:
         tokens = []
         is_comment = False
         is_string = False
+        line = 1
+        column = 1
+        start_column = 1
 
         for char in code:
             if char == '\n':
                 if is_comment:
-                    self.add_token('COMMENT', word, tokens)
+                    self.add_token('COMMENT', word, tokens, line, start_column)
                     word = ''
                     is_comment = False
+                line += 1
+                column = 1
+                start_column = 1
+                self.add_word(word, tokens, line, start_column)
+                word = ''
                 continue
 
             if char == '#':
@@ -151,39 +159,48 @@ class LexicalAnalyzer:
 
             if is_comment:
                 word += char
+                column += 1
                 continue
 
             if char == '"':
                 if is_string:
-                    self.add_token('STRING', word, tokens)
+                    self.add_token('STRING', word, tokens, line, start_column)
                     word = ''
                     is_string = False
                 else:
-                    self.add_word(word, tokens)
+                    self.add_word(word, tokens, line, start_column)
                     word = ''
                     is_string = True
-                self.add_token('QUOTES', char, tokens)
+                self.add_token('QUOTES', char, tokens, line, column)
+                column += 1
                 continue
 
             if is_string:
                 word += char
+                column += 1
                 continue
 
             if char in string.whitespace:
-                self.add_word(word, tokens)
+                self.add_word(word, tokens, line, start_column)
                 word = ''
+                column += 1
             elif char.isalnum() or char == '_' or char == '.':
+                if not word:
+                    start_column = column
                 word += char
+                column += 1
             elif char in string.punctuation:
-                self.add_word(word, tokens)
+                self.add_word(word, tokens, line, start_column)
                 word = ''
                 if char != '.':
-                    self.add_word(char, tokens)
+                    self.add_word(char, tokens, line, column)
+                column += 1
             else:
-                self.add_word(word, tokens)
+                self.add_word(word, tokens, line, start_column)
                 word = ''
+                column += 1
 
-        self.add_word(word, tokens)
+        self.add_word(word, tokens, line, start_column)
         return tokens
 
 class LexicalAnalyzerApp:
@@ -211,8 +228,8 @@ class LexicalAnalyzerApp:
         tokens = self.analyzer.analyze_lexically(code)
         output = ""
         for token in tokens:
-            name, value = token
-            output += f"{value} = {name}\n"
+            name, value, line, column = token
+            output += f"{value} = {name} (line {line}, column {column})\n"
         self.output_text.delete("1.0", "end")
         self.output_text.insert("1.0", output)
 
