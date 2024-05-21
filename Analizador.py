@@ -47,16 +47,6 @@ diccionario_operadores = {
     '^': {'nombre': 'corchete de cierre'},
     '$': {'nombre': 'terminal'},
     '|': {'nombre': 'separador de sentencias'},
-    'por': { 'nombre': 'ciclo for'},
-    'porCada': { 'nombre': 'ciclo forEach'},
-    'mientras': { 'nombre': 'ciclo while'},
-    'hacerMientras': { 'nombre': 'ciclo do-while'},
-    'si': { 'nombre': 'condicional si'},
-    'siNo': { 'nombre': 'condicional else'},
-    'entonces': { 'nombre': 'sentencia finally'},
-    'habilidade': { 'nombre': 'palabra clase'},
-    'abstrato': { 'nombre': 'palabra interfaz'},
-    'especies': { 'nombre': 'palabra enums'},
     'enterito64': { 'nombre': 'variable entera'},
     'realsote64': { 'nombre': 'variable real'},
     'textil': { 'nombre': 'variable de array'},
@@ -71,7 +61,7 @@ diccionario_operadores = {
 
 # Definimos las palabras reservadas
 palabras_reservadas = [
-    'if', 'else', 'while', 'for', 'foreach', 'import', 'last','continue', 'do', 'require', 'use', 'return'
+    'si', 'siNo', 'mientras', 'por', 'porCada', 'hacerMientras','entonces','habilidade','abstrato','especies'
 ]
 
 # Función para verificar si una palabra es un identificador
