@@ -1,24 +1,22 @@
 import tkinter as tk
 from tkinter import filedialog
+import graphviz
+import os
 
 class Aplicacion:
     def __init__(self, root):
         self.root = root
         self.root.title("TLF")
 
-        # Crear un botón para seleccionar un archivo
         self.boton_seleccionar_archivo = tk.Button(root, text="Select File", command=self.seleccionar_archivo)
         self.boton_seleccionar_archivo.pack(pady=10)
 
-        # Crear una etiqueta para mostrar el archivo seleccionado
         self.etiqueta_archivo = tk.Label(root, text="The file has not been selected")
         self.etiqueta_archivo.pack(pady=10)
 
-        # Crear un cuadro de texto grande
         self.cuadro_texto = tk.Text(root, wrap=tk.WORD, width=80, height=20, state=tk.DISABLED)
         self.cuadro_texto.pack(pady=10)
 
-        # Definir operadores y palabras reservadas
         self.operators = {
             'sumi': {'name': 'addition'},
             'resti': {'name': 'subtraction'},
@@ -67,25 +65,19 @@ class Aplicacion:
         ]
 
     def seleccionar_archivo(self):
-        #Abrir archivo
         archivo = filedialog.askopenfilename()
         if archivo:
-            #Etiqueta de abrir el archivo
             self.etiqueta_archivo.config(text=f"Selected File: {archivo}")
-            #Se abre el archivo
             with open(archivo, 'r') as file:
                 contenido = file.read()
                 self.mostrar_palabras_con_posicion(contenido)
+                self.graficar_afd(contenido)
 
     def mostrar_palabras_con_posicion(self, texto):
-        #Se habilita para escribir el cuadro de texto
         self.cuadro_texto.config(state=tk.NORMAL)
-        #Se borra lo que hay en el cuadro de texto
         self.cuadro_texto.delete(1.0, tk.END)
         lineas = texto.splitlines()
-        #Se recorren las lineas
         for fila, linea in enumerate(lineas):
-            #Si empieza por # es un comentario de linea
             if linea.startswith('#'):
                 self.cuadro_texto.insert(tk.END, f"{linea} (Row: {fila + 1}) - Line Comment\n")
             else:
@@ -93,9 +85,7 @@ class Aplicacion:
                 columna = 0
                 ultimo_identificador = None
                 for palabra in palabras:
-                    # Encontrar la columna correcta donde comienza la palabra
                     columna = linea.index(palabra, columna)
-                    #Se calcula la posicion
                     posicion = f"(Row: {fila + 1}, Column: {columna + 1})"
                     descripcion = self.clasificar_palabra(palabra, ultimo_identificador)
                     if "Identifier" in descripcion:
@@ -103,7 +93,6 @@ class Aplicacion:
                     else:
                         ultimo_identificador = None
                     self.cuadro_texto.insert(tk.END, f"{palabra} {posicion} - {descripcion}\n")
-                    # Mover la columna para el siguiente ciclo
                     columna += len(palabra)
         self.cuadro_texto.config(state=tk.DISABLED)
 
@@ -136,7 +125,6 @@ class Aplicacion:
             return "Unidentified"
 
     def es_string(self, palabra):
-        # Verificar si la palabra empieza y termina con "&" y si el segundo y el penúltimo caracter son letras mayúsculas o minúsculas
         return len(palabra) >= 4 and palabra.startswith('&') and palabra.endswith('&') and palabra[1].isalpha() and palabra[-2].isalpha()
     
     def es_error_string(self, palabra):
@@ -144,21 +132,22 @@ class Aplicacion:
         return (len(palabra) >= 4 and not palabra.startswith('&') and palabra.endswith('&') and palabra[1].isalpha() and palabra[-2].isalpha()) or (len(palabra) >= 4 and palabra.startswith('&') and not palabra.endswith('&') and palabra[1].isalpha() and palabra[-2].isalpha()) or (len(palabra) >= 4 and palabra.endswith('&') and palabra.startswith('&') and not palabra[1].isalpha() and palabra[-2].isalpha()) or (len(palabra) >= 4 and palabra.startswith('&') and palabra[1].isalpha() and not palabra[-2].isalpha() and palabra.endswith('&'))
 
     def es_caracter(self, palabra):
-        # Verificar si la palabra tiene longitud 1, si es un carácter ASCII, y si no es el numeral #
         return len(palabra) == 1 and 32 <= ord(palabra) <= 126 and palabra != '#'
 
     def es_numero_decimal(self, palabra):
-        # Verificar si la palabra comienza y termina con "#" y si contiene exactamente una "@" en su interior
         partes = palabra.split("@")
         return palabra.startswith('#') and palabra.endswith('#') and len(partes) == 2 and partes[0][1:].isdigit() and partes[1][:-1].isdigit()
+
     
     def es_error_numero_decimal(self, palabra):
         # Verificar si la palabra comienza y termina con "#" y si contiene exactamente una "@" en su interior
         partes = palabra.split("@")
         return (palabra.startswith('#') and not palabra.endswith('#') and len(partes) == 2 and partes[0][1:].isdigit() and partes[1][:-1].isdigit()) or (not palabra.startswith('#') and palabra.endswith('#') and len(partes) == 2 and partes[0][1:].isdigit() and partes[1][:-1].isdigit())
         
+
+
+
     def es_numero_entero(self, palabra):
-        # Verificar si la palabra comienza y termina con "#" y si el contenido entre los numerales consiste en caracteres numéricos
         return palabra.startswith('#') and palabra.endswith('#') and palabra[1:-1].isdigit()
     
     def es_error_numero_entero(self, palabra):
@@ -168,7 +157,41 @@ class Aplicacion:
     def escribir_texto(self, texto):
         self.cuadro_texto.insert(tk.END, texto)
 
+    def graficar_afd(self, texto):
+        lineas = texto.splitlines()
+        elemento_id = 0
+        for fila, linea in enumerate(lineas):
+            if not linea.startswith('#'):
+                palabras = linea.split()
+                ultimo_identificador = None
+                for palabra in palabras:
+                    descripcion = self.clasificar_palabra(palabra, ultimo_identificador)
+                    if "Identifier" in descripcion:
+                        ultimo_identificador = palabra
+                    else:
+                        ultimo_identificador = None
+                    if descripcion != "Unidentified":
+                        self.crear_grafico_afd(palabra, descripcion, elemento_id)
+                        elemento_id += 1
+
+    def crear_grafico_afd(self, palabra, descripcion, elemento_id):
+        afd = graphviz.Digraph(f'AFD_{elemento_id}', filename=f'afd_{elemento_id}.gv', format='png')
+        afd.attr(rankdir='LR', size='8,5')
+        afd.attr('node', shape='circle')
+
+        estado_anterior = 'q0'
+        afd.node(estado_anterior, shape='doublecircle')
+
+        for i, char in enumerate(palabra):
+            estado_siguiente = f'q{i+1}'
+            afd.node(estado_siguiente)
+            afd.edge(estado_anterior, estado_siguiente, label=char)
+            estado_anterior = estado_siguiente
+
+        afd.node(estado_siguiente, shape='doublecircle')
+        afd.render(view=False)
+
 if __name__ == "__main__":
     root = tk.Tk()
-    app = Aplicacion(root)    
+    app = Aplicacion(root)
     root.mainloop()
