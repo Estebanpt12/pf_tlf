@@ -108,12 +108,18 @@ class Aplicacion:
         self.cuadro_texto.config(state=tk.DISABLED)
 
     def clasificar_palabra(self, palabra, ultimo_identificador):
-        if self.es_numero_entero(palabra):
+        if self.es_error_numero_entero(palabra):
+            return "Error Integer"
+        elif self.es_numero_entero(palabra):
             return "Integer"
         elif self.es_numero_decimal(palabra):
             return "Decimal"
+        elif self.es_error_numero_decimal(palabra):
+            return "Error Decimal"
         elif self.es_caracter(palabra):
             return "Char"
+        elif self.es_error_string(palabra):
+            return "Error String"
         elif self.es_string(palabra):
             return "String"
         if ultimo_identificador is not None:
@@ -132,6 +138,10 @@ class Aplicacion:
     def es_string(self, palabra):
         # Verificar si la palabra empieza y termina con "&" y si el segundo y el penúltimo caracter son letras mayúsculas o minúsculas
         return len(palabra) >= 4 and palabra.startswith('&') and palabra.endswith('&') and palabra[1].isalpha() and palabra[-2].isalpha()
+    
+    def es_error_string(self, palabra):
+        # Verificar si la palabra empieza y termina con "&" y si el segundo y el penúltimo caracter son letras mayúsculas o minúsculas
+        return (len(palabra) >= 4 and not palabra.startswith('&') and palabra.endswith('&') and palabra[1].isalpha() and palabra[-2].isalpha()) or (len(palabra) >= 4 and palabra.startswith('&') and not palabra.endswith('&') and palabra[1].isalpha() and palabra[-2].isalpha()) or (len(palabra) >= 4 and palabra.endswith('&') and palabra.startswith('&') and not palabra[1].isalpha() and palabra[-2].isalpha()) or (len(palabra) >= 4 and palabra.startswith('&') and palabra[1].isalpha() and not palabra[-2].isalpha() and palabra.endswith('&'))
 
     def es_caracter(self, palabra):
         # Verificar si la palabra tiene longitud 1, si es un carácter ASCII, y si no es el numeral #
@@ -141,10 +151,19 @@ class Aplicacion:
         # Verificar si la palabra comienza y termina con "#" y si contiene exactamente una "@" en su interior
         partes = palabra.split("@")
         return palabra.startswith('#') and palabra.endswith('#') and len(partes) == 2 and partes[0][1:].isdigit() and partes[1][:-1].isdigit()
+    
+    def es_error_numero_decimal(self, palabra):
+        # Verificar si la palabra comienza y termina con "#" y si contiene exactamente una "@" en su interior
+        partes = palabra.split("@")
+        return (palabra.startswith('#') and not palabra.endswith('#') and len(partes) == 2 and partes[0][1:].isdigit() and partes[1][:-1].isdigit()) or (not palabra.startswith('#') and palabra.endswith('#') and len(partes) == 2 and partes[0][1:].isdigit() and partes[1][:-1].isdigit())
         
     def es_numero_entero(self, palabra):
         # Verificar si la palabra comienza y termina con "#" y si el contenido entre los numerales consiste en caracteres numéricos
         return palabra.startswith('#') and palabra.endswith('#') and palabra[1:-1].isdigit()
+    
+    def es_error_numero_entero(self, palabra):
+        # Verificar si la palabra es un numero con error si el contenido entre los numerales consiste en caracteres numéricos
+        return (palabra.startswith('#') and not palabra.endswith('#') and palabra[1:-1].isdigit()) or (not palabra.startswith('#') and palabra.endswith('#') and palabra[1:-1].isdigit())
 
     def escribir_texto(self, texto):
         self.cuadro_texto.insert(tk.END, texto)
